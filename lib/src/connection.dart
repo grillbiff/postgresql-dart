@@ -44,7 +44,9 @@ class PostgreSQLConnection extends Object
       this.timeoutInSeconds = 30,
       this.queryTimeoutInSeconds = 30,
       this.timeZone = 'UTC',
-      this.useSSL = false}) {
+      this.useSSL = false,
+      this.isUnixSocket = false,
+      }) {
     _connectionState = _PostgreSQLConnectionStateClosed();
     _connectionState.connection = this;
   }
@@ -81,6 +83,9 @@ class PostgreSQLConnection extends Object
 
   /// The processID of this backend.
   int get processID => _processID;
+
+  /// If true, connection is made via unix socket. 
+  final bool isUnixSocket;
 
   /// Stream of notification from the database.
   ///
@@ -137,7 +142,14 @@ class PostgreSQLConnection extends Object
 
     try {
       _hasConnectedPreviously = true;
-      _socket = await Socket.connect(host, port)
+      InternetAddress addr;
+      if (isUnixSocket) {
+        addr = InternetAddress(host, type: InternetAddressType.unix);
+      } else {
+        addr = InternetAddress(host);
+      }
+
+      _socket = await Socket.connect(addr, port)
           .timeout(Duration(seconds: timeoutInSeconds));
 
       _framer = MessageFramer();
